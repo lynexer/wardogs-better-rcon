@@ -3,7 +3,9 @@
     "compilerOptions": {
         "outDir": "dist",
         "rootDir": "src",
-        "types": ["@types/node"]
+        "types": ["@types/node"],
+        "sourceMap": true,
+        "verbatimModuleSyntax": true
     },
     "include": ["src"],
     "exclude": ["node_modules", "dist", ".turbo"]

@@ -13,7 +13,7 @@ deeper in your code.
 ## Install
 
 ```sh
-pnpm add @lynexer/warddogs-api zod
+pnpm add @lynexer/wardogs-api zod
 # or
 npm i @lynexer/wardogs-api zod
 # or

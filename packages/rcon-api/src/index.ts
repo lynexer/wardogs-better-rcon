@@ -1,5 +1,5 @@
 /**
- * @lynexer/wardogs-rcon-api
+ * @lynexer/wardogs-api
  *
  * Typed client and runtime-validated schemas for the Wardogs RCON v1 HTTP API.
  *
@@ -11,7 +11,7 @@
  * Quick start:
  *
  *   const client = new WardogsRconClient({
- *     baseUrl: "/api/203.0.113.10/7777",  // or the listener directly
+ *     baseUrl: "/api/203.0.113.10/7777",
  *     password: rconPassword,
  *   });
  *

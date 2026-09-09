@@ -13,7 +13,11 @@ deeper in your code.
 ## Install
 
 ```sh
-npm install @lynexer/wardogs-api zod
+pnpm add @lynexer/warddogs-api zod
+# or
+npm i @lynexer/wardogs-api zod
+# or
+yarn add @lynexer/wardogs-api zod
 ```
 
 `zod` is a peer dependency (`^3.23.0 || ^4.0.0`) — install the version your project already uses.

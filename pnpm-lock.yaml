@@ -4,6 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@biomejs/biome':
+      specifier: 2.5.11
+      version: 2.5.11
+    typescript:
+      specifier: 7.0.2
+      version: 7.0.2
+    zod:
+      specifier: ^4.5.4
+      version: 4.5.4
+
 importers:
 
   .:
@@ -15,12 +27,24 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  apps/proxy:
+    dependencies:
+      '@biomejs/biome':
+        specifier: 'catalog:'
+        version: 2.5.11
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.5.4
+
   packages/biome-config: {}
 
   packages/rcon-api:
     devDependencies:
       '@biomejs/biome':
-        specifier: 2.5.11
+        specifier: 'catalog:'
         version: 2.5.11
       '@repo/biome-config':
         specifier: workspace:*
@@ -32,10 +56,10 @@ importers:
         specifier: ^22.20.1
         version: 22.20.1
       typescript:
-        specifier: 7.0.2
+        specifier: 'catalog:'
         version: 7.0.2
       zod:
-        specifier: ^4.5.4
+        specifier: 'catalog:'
         version: 4.5.4
 
   packages/typescript-config: {}

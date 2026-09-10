@@ -27,12 +27,12 @@
         "zod": "^3.23.0 || ^4.0.0"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.5.11",
+        "@biomejs/biome": "catalog:",
         "@repo/biome-config": "workspace:*",
         "@repo/typescript-config": "workspace:*",
         "@types/node": "^22.20.1",
-        "typescript": "7.0.2",
-        "zod": "^4.5.4"
+        "typescript": "catalog:",
+        "zod": "catalog:"
     },
     "engines": {
         "node": ">=20"

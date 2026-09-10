@@ -18,15 +18,15 @@ export class TargetError extends Error {
 }
 
 export function parseTarget(pathname: string, search = ''): ProxyTarget {
-    const parts = pathname.split('/').filter(Boolean);
+    const [prefix, rawHost, rawPort, ...rest] = pathname.split('/').filter(Boolean);
 
-    if (parts.length < 4 || parts[0] !== 'api') {
+    if (prefix !== 'api' || !rawHost || !rawPort || rest.length === 0) {
         throw new TargetError('bad_target', 'Expected /api/<host>/<port>/v1/...');
     }
 
-    const host = decodeURIComponent(parts[1]!).trim().toLowerCase();
-    const port = Number(parts[2]);
-    const path = `/${parts.slice(3).join('/')}${search}`;
+    const host = decodeURIComponent(rawHost).trim().toLowerCase();
+    const port = Number(rawPort);
+    const path = `/${rest.join('/')}${search}`;
 
     if (!host || host.length > 253) {
         throw new TargetError('bad_host', 'Target host is missing or malformed.');

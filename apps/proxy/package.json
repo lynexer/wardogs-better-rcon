@@ -1,0 +1,26 @@
+{
+    "name": "@repo/proxy",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "main": "./dist/index.js",
+    "scripts": {
+        "lint": "biome check --write ."
+    },
+    "dependencies": {
+        "@hono/node-server": "^2.1.1",
+        "@lynexer/wardogs-api": "workspace:*",
+        "hono": "^4.13.7",
+        "zod": "catalog:"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "catalog:",
+        "@repo/biome-config": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@types/node": "^22.20.1",
+        "typescript": "catalog:"
+    },
+    "engines": {
+        "node": ">=22"
+    }
+}

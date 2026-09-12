@@ -5,6 +5,8 @@
     "private": true,
     "main": "./dist/index.js",
     "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/index.ts",
         "lint": "biome check --write ."
     },
     "dependencies": {
@@ -19,6 +21,7 @@
         "@repo/biome-config": "workspace:*",
         "@repo/typescript-config": "workspace:*",
         "@types/node": "^22.20.1",
+        "tsx": "^4.23.13",
         "typescript": "catalog:"
     },
     "engines": {

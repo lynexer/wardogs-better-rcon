@@ -2,19 +2,41 @@ import { z } from 'zod';
 
 // SECTION: Shared Primitives // ----------------------------------------
 
+const count = z.number().optional();
+const nullableString = (fallback = '') =>
+    z
+        .string()
+        .nullish()
+        .transform((v) => v ?? fallback);
+
 export const SteamId = z.string().regex(/^\d{17}$/, 'Expected a 17-digit SteamID64.');
 export const FactionLabel = z.enum(['RED', 'BLU', 'GRN']);
 export const AppliesWhen = z.enum(['applied', 'next-match', 'next-restart', 'pending']);
+
+// !SECTION
+
+// SECTION: Errors
 
 export const ApiError = z.object({
     code: z.string(),
     message: z.string()
 });
 
-export const ApiErrorEnvelope = z.object({ error: ApiError });
+export const ApiErrorEnvelope = z.object({ error: z.union([z.string(), ApiError]) });
+
+export function normalizeApiError(raw: unknown): { code: string; message: string } | null {
+    const parsed = ApiErrorEnvelope.safeParse(raw);
+    if (!parsed.success) return null;
+
+    const error = parsed.data.error;
+
+    return typeof error === 'string' ? { code: 'auth_error', message: error } : error;
+}
 
 export const MessageResponse = z.object({
-    message: z.string().optional()
+    ok: z.boolean().optional(),
+    pending: z.boolean().optional(),
+    message: nullableString()
 });
 
 // !SECTION
@@ -22,8 +44,22 @@ export const MessageResponse = z.object({
 // SECTION: Capabilities // ----------------------------------------
 
 export const Capabilities = z.object({
-    routes: z.array(z.string()).default([]),
-    config: z.object({ writable: z.boolean().optional() }).default({})
+    apiVersion: z.string().optional(),
+    build: z.string().optional(),
+    auth: z.object({ scheme: z.string().optional(), header: z.string().optional() }).optional(),
+    limits: z
+        .object({
+            maxBodyBytes: z.number().optional(),
+            maxRequestsPerMinutePerIp: z.number().optional()
+        })
+        .optional(),
+    config: z
+        .object({
+            writable: z.boolean().optional(),
+            document: z.string().optional()
+        })
+        .default({}),
+    routes: z.array(z.string()).default([])
 });
 
 // !SECTION
@@ -57,13 +93,13 @@ export const Status = z.object({
     map: z.string(),
     experiences: z.array(z.string()).default([]),
     lighting: z.string(),
-    alternator: z.string().default(''),
+    alternator: nullableString(),
     scoreTick: ScoreTick,
-    scoreCap: z.number(),
-    matchSeconds: z.number(),
     players: PlayerCount,
     factionScores: z.array(FactionScore).default([]),
-    rotation: RotationPointers.default({ nowIndex: null, nextIndex: null })
+    rotation: RotationPointers.default({ nowIndex: null, nextIndex: null }),
+    scoreCap: z.number().optional(),
+    matchSeconds: z.number().optional()
 });
 
 // !SECTION
@@ -81,7 +117,8 @@ export const Player = z.object({
 });
 
 export const PlayerList = z.object({
-    players: z.array(Player).default([])
+    players: z.array(Player).default([]),
+    count
 });
 
 // !SECTION
@@ -90,9 +127,9 @@ export const PlayerList = z.object({
 
 export const Ban = z.object({
     steamId: z.string(),
-    bannedAtUtc: z.string().default('-'),
-    bannedBy: z.string().default('-'),
-    reason: z.string().default('-')
+    bannedAtUtc: nullableString(),
+    bannedBy: nullableString(),
+    reason: nullableString()
 });
 
 export const BanList = z.object({
@@ -100,7 +137,8 @@ export const BanList = z.object({
 });
 
 export const ReservedSlotList = z.object({
-    reservedSlots: z.array(z.string()).default([])
+    reservedSlots: z.array(z.string()).default([]),
+    count
 });
 
 // !SECTION
@@ -109,21 +147,34 @@ export const ReservedSlotList = z.object({
 
 const CatalogEntry = z.object({
     id: z.string(),
-    displayName: z.string().optional()
+    displayName: nullableString()
 });
 
-export const MapCatalog = z.object({ maps: z.array(CatalogEntry).default([]) });
-export const LightingCatalog = z.object({ lightings: z.array(CatalogEntry).default([]) });
-export const ExperienceCatalog = z.object({ experiences: z.array(CatalogEntry).default([]) });
+export const MapCatalog = z.object({ maps: z.array(CatalogEntry).default([]), count });
+export const LightingCatalog = z.object({ lightings: z.array(CatalogEntry).default([]), count });
+export const ExperienceCatalog = z.object({
+    experiences: z.array(CatalogEntry).default([]),
+    count
+});
 
 export const AlternatorCatalog = z.object({
+    map: z.string().optional(),
     alternators: z
-        .array(z.object({ tag: z.string(), displayName: z.string().optional() }))
-        .default([])
+        .array(
+            z.object({
+                index: z.number().optional(),
+                tag: z.string(),
+                displayName: nullableString()
+            })
+        )
+        .default([]),
+    count
 });
 
 export const MapExperienceIds = z.object({
-    experiences: z.array(z.string()).default([])
+    map: z.string().optional(),
+    experiences: z.array(z.string()).default([]),
+    count
 });
 
 // !SECTION
@@ -131,18 +182,20 @@ export const MapExperienceIds = z.object({
 // SECTION: Rotation // ----------------------------------------
 
 export const RotationEntry = z.object({
+    index: z.number().optional(),
     map: z.string(),
     experiences: z.array(z.string()).default([]),
-    lighting: z.string().default(''),
-    zoneAlternator: z.string().default('None'),
+    lighting: nullableString(),
+    zoneAlternator: nullableString('None'),
     denied: z.boolean().default(false),
-    status: z.string().default('')
+    status: nullableString()
 });
 
 export const Rotation = z.object({
     enabled: z.boolean().default(false),
     mode: z.string().default('ordered'),
-    entries: z.array(RotationEntry).default([])
+    entries: z.array(RotationEntry).default([]),
+    count
 });
 
 // !SECTION
@@ -150,19 +203,21 @@ export const Rotation = z.object({
 // SECTION: Sponsor and Audit // ----------------------------------------
 
 export const Sponsor = z.object({
-    imageUrl: z.string().default('')
+    imageUrl: nullableString()
 });
 
 export const AuditEntry = z.object({
     timestampUtc: z.string(),
-    peer: z.string().default(''),
-    sessionId: z.string().default(''),
+    peer: nullableString(),
+    sessionId: nullableString(),
     event: z.string(),
-    detail: z.string().default('')
+    detail: nullableString()
 });
 
 export const AuditLog = z.object({
-    entries: z.array(AuditEntry).default([])
+    limit: z.number().optional(),
+    entries: z.array(AuditEntry).default([]),
+    count
 });
 
 // !SECTION
@@ -172,20 +227,21 @@ export const AuditLog = z.object({
 export const ConfigKeyOverride = z.object({
     key: z.string(),
     appliesWhen: AppliesWhen.optional(),
-    description: z.string().default('')
+    description: nullableString()
 });
 
 export const ConfigSection = z.object({
     section: z.string(),
     appliesWhen: AppliesWhen.optional(),
-    description: z.string().default(''),
+    description: nullableString(),
+    allowedKeys: z.array(z.string()).default([]),
     keyOverrides: z.array(ConfigKeyOverride).default([])
 });
 
 export const ConfigDocument = z.object({
-    revision: z.string().default(''),
+    revision: nullableString(),
     writable: z.boolean().default(true),
-    text: z.string().default(''),
+    text: nullableString(),
     sections: z.array(ConfigSection).default([]),
     warnings: z.array(z.string()).default([])
 });
@@ -193,21 +249,21 @@ export const ConfigDocument = z.object({
 export const ConfigOutcome = z.object({
     section: z.string(),
     state: AppliesWhen.optional(),
-    detail: z.string().default('')
+    detail: nullableString()
 });
 
 export const ConfigShadowed = z.object({
     section: z.string(),
     key: z.string(),
-    declared: z.string().default(''),
-    effective: z.string().default(''),
-    branch: z.string().default('')
+    declared: nullableString(),
+    effective: nullableString(),
+    branch: nullableString()
 });
 
 export const ConfigStripped = z.object({
     section: z.string(),
     key: z.string().optional(),
-    reason: z.string().default('')
+    reason: nullableString()
 });
 
 export const ConfigFieldError = z.object({
@@ -228,7 +284,7 @@ export const ConfigTimings = z.object({
 export const ConfigResultBody = z.object({
     ok: z.boolean().optional(),
     revision: z.string().optional(),
-    error: ApiError.optional(),
+    error: z.union([z.string(), ApiError]).optional(),
     outcomes: z.array(ConfigOutcome).default([]),
     shadowed: z.array(ConfigShadowed).default([]),
     stripped: z.array(ConfigStripped).default([]),
@@ -251,7 +307,6 @@ export const MapSelectionBody = z.object({
 });
 
 export const KickBody = z.object({ reason: z.string() });
-export const KillBody = z.undefined();
 export const WhisperBody = z.object({ message: z.string() });
 export const BroadcastBody = z.object({ message: z.string() });
 export const BanBody = z.object({ steamId: z.string(), reason: z.string().optional() });

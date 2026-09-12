@@ -1,5 +1,10 @@
 import type { z } from 'zod';
-import { ApiErrorEnvelope, ConfigResultBody, type ConfigResultBodyShape } from './schemas.js';
+import {
+    ApiErrorEnvelope,
+    ConfigResultBody,
+    type ConfigResultBodyShape,
+    normalizeApiError
+} from './schemas.js';
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -42,6 +47,25 @@ function safeJson(text: string): unknown {
     }
 }
 
+function emptyConfigResult(): ConfigResult {
+    return {
+        ok: false,
+        status: 0,
+        conflict: false,
+        revision: null,
+        errorCode: null,
+        errorMessage: null,
+        outcomes: [],
+        shadowed: [],
+        stripped: [],
+        errors: [],
+        changed: [],
+        conflictDeltas: [],
+        warnings: [],
+        timingsMs: null
+    };
+}
+
 export class RconError extends Error {
     readonly code: string;
     readonly status: number | null;
@@ -52,6 +76,10 @@ export class RconError extends Error {
         this.name = 'RconError';
         this.code = code;
         this.status = status;
+    }
+
+    get isAuthFailure(): boolean {
+        return this.status === 401 || this.status === 403;
     }
 }
 
@@ -112,36 +140,28 @@ export class Transport {
             text = await response.text();
         } catch (err) {
             return {
-                ok: false,
-                status: 0,
-                conflict: false,
-                revision: null,
-                errorCode: 'network_error',
-                errorMessage: err instanceof Error ? err.message : String(err),
-                outcomes: [],
-                shadowed: [],
-                stripped: [],
-                errors: [],
-                changed: [],
-                conflictDeltas: [],
-                warnings: [],
-                timingsMs: null
+                ...emptyConfigResult(),
+                errorCode: err instanceof RconError ? err.code : 'network_error',
+                errorMessage: err instanceof Error ? err.message : String(err)
             };
         }
 
         const raw = text.length > 0 ? safeJson(text) : {};
         const parsed = ConfigResultBody.safeParse(raw);
         const body = parsed.success ? parsed.data : ConfigResultBody.parse({});
+        const error =
+            typeof body.error === 'string'
+                ? { code: 'error', message: body.error }
+                : (body.error ?? null);
 
         return {
             ok: response.ok && body.ok !== false,
             status: response.status,
             conflict: response.status === 412,
             revision: body.revision ?? null,
-            errorCode: body.error?.code ?? null,
+            errorCode: error?.code ?? null,
             errorMessage:
-                body.error?.message ??
-                (response.ok ? null : `Request failed (${response.status}).`),
+                error?.message ?? (response.ok ? null : `Request failed (${response.status}).`),
             outcomes: body.outcomes,
             shadowed: body.shadowed,
             stripped: body.stripped,
@@ -186,10 +206,10 @@ export class Transport {
     }
 
     private toError(text: string, status: number): RconError {
-        const parsed = ApiErrorEnvelope.safeParse(safeJson(text));
+        const error = normalizeApiError(safeJson(text));
 
-        if (parsed.success) {
-            return new RconError(parsed.data.error.message, parsed.data.error.code, status);
+        if (error) {
+            return new RconError(error.message, error.code, status);
         }
 
         return new RconError(`Request failed (${status}).`, 'http_error', status);

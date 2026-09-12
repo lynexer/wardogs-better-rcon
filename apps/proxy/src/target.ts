@@ -40,6 +40,10 @@ export function parseTarget(pathname: string, search = ''): ProxyTarget {
         throw new TargetError('bad_port', 'Port 25 cannot be proxied.');
     }
 
+    if (/%2e/i.test(path) || path.includes('..')) {
+        throw new TargetError('bad_path', 'Path traversal is not permitted.');
+    }
+
     if (!path.startsWith('/v1/')) {
         throw new TargetError('bad_path', 'Only /v1/ paths are proxied.');
     }

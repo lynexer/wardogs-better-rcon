@@ -12,9 +12,9 @@ import {
 
 const PORT = Number(process.env.PORT ?? 8080);
 const UPSTREAM_TIMEPUT_MS = Number(process.env.UPSTREAM_TIMEPUT_MS ?? 10_000);
-const MAX_BODY_BYTES = 256 * 1024;
+const MAX_BODY_BYTES = 64 * 1024;
 const FORWARD_HEADERS = ['authorization', 'content-type', 'if-match'] as const;
-const RATE = { capacity: 30, refillPerSecond: 1 };
+const RATE = { capacity: 60, refillPerSecond: 10 };
 
 const app = new Hono();
 const buckets = new Map<string, { tokens: number; updated: number }>();
